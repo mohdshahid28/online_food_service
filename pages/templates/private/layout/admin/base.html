@@ -1,0 +1,6 @@
+{% extends "private/layout/base.html" %}
+
+{% block title %}{% block admin_title %}Admin Panel | BJFC{% endblock %}{% endblock %}
+{% block role_label %}Admin{% endblock %}
+{% block account_role %}Administrator{% endblock %}
+{% block sidebar %}{% include "private/layout/admin/sidebar.html" %}{% endblock %}

@@ -1,0 +1,45 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Bespren Johny's Fried Chicken{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{% static 'icons/logo.png' %}">
+
+    <script src="{% static 'js/tailwind-3.4.17.js' %}"></script>
+    <script src="{% static 'js/chart.js' %}"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { DEFAULT: '#ee2023', btn: '#df2929', dark: '#303030' },
+                    },
+                    fontFamily: {
+                        sans: ['Nunito', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        @layer components {
+            .footer-link {
+                @apply inline-flex items-center gap-2 text-sm text-white/75 transition duration-200 hover:translate-x-1 hover:text-white;
+            }
+        }
+    </style>
+
+    {% block header %}{% endblock %}
+</head>
+
+<body class="bg-white font-sans text-black antialiased">
+    {% block content %}
+    {% endblock %}
+</body>
+</html>

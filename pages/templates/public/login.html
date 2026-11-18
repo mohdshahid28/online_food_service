@@ -1,0 +1,85 @@
+{% extends 'public/auth_layout.html' %}
+
+{% block title %}Log In | Bespren Johny's Fried Chicken{% endblock %}
+
+{% block logo_class %}mt-[40px] w-[103px]{% endblock %}
+{% block heading_class %}mt-[28px] uppercase{% endblock %}
+{% block heading %}Log In{% endblock %}
+
+{% block body %}
+{# Field names match the login API (/api/login/): username (a username or an email), password. #}
+<form id="loginForm" method="post" action="" data-endpoint="{% url 'login_api' %}" class="mt-10 flex w-full max-w-[400px] flex-col items-center sm:mt-[47px]">
+        {% csrf_token %}
+
+    {% with 'block h-9 w-full rounded-xl border border-black bg-[#f8c8c8] pl-[41px] pr-3 text-[11px] font-medium text-black shadow-[0_3px_4px_rgba(0,0,0,0.3)] outline-none transition duration-300 placeholder:text-black focus:ring-2 focus:ring-red-500/60' as field %}
+    <div class="relative w-full">
+        <label for="username" class="sr-only">Username or email</label>
+        <svg viewBox="0 0 24 24" class="pointer-events-none absolute left-[13px] top-1/2 h-[15px] w-[15px] -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
+        </svg>
+        <input id="username" name="username" type="text" placeholder="Username or email" autocomplete="username" required class="{{ field }}">
+    </div>
+
+    <div class="relative mt-6 w-full">
+        <label for="password" class="sr-only">Password</label>
+        <svg viewBox="0 0 24 24" class="pointer-events-none absolute left-[13px] top-1/2 h-[15px] w-[15px] -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/>
+        </svg>
+        <input id="password" name="password" type="password" placeholder="Password" autocomplete="current-password" required class="{{ field }}">
+    </div>
+    {% endwith %}
+
+    <button type="submit"
+            class="mt-[24px] h-9 w-[131px] rounded-xl bg-gradient-to-r from-[#f96e70] to-[#f92e2e] text-base font-bold uppercase text-white shadow-[0_4px_4px_rgba(0,0,0,0.25)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0">
+        Log In
+    </button>
+
+    <p id="loginMessage" class="mt-3 text-sm text-center" role="alert"></p>
+
+</form>
+
+
+<script>
+document.getElementById("loginForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const form = this;
+    const message = document.getElementById("loginMessage");
+
+    try {
+        message.textContent = "Logging in...";
+
+        const response = await fetch(form.dataset.endpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": form.querySelector('[name="csrfmiddlewaretoken"]').value
+            },
+            credentials: "same-origin",
+            body: JSON.stringify({
+                username: form.username.value.trim(),
+                password: form.password.value,
+                admin_only: false
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Login failed.");
+
+        message.textContent = "Login successful!";
+        message.className = "mt-3 text-sm text-center text-green-700";
+        window.location.href = data.user.is_staff
+            ? "{% url 'admin_dashboard' %}"
+            : ("{{ next_url|escapejs }}" || "{% url 'dashboard' %}");
+
+    } catch (error) {
+        message.textContent = error.message;
+        message.className = "mt-3 text-sm text-center text-red-600";
+    }
+});
+</script>
+
+
+{% endblock %}
+
+{% block bottom %}You dont have account? <a href="{% url 'signup' %}" class="text-[#6a8fcf] transition duration-300 hover:underline">Sign up here</a>{% endblock %}

@@ -1,0 +1,542 @@
+{% extends "private/layout/admin/base.html" %}
+{% load static %}
+
+{% block title %}Order Management{% endblock %}
+{% block page_heading %}Order Management{% endblock %}
+
+{% block content %}
+<div class="space-y-7">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+            <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-[#a87864]">Kitchen workspace</p>
+            <h2 class="mt-1 text-3xl font-black tracking-tight text-[#342724]">Orders</h2>
+            <p class="mt-1 text-sm font-semibold text-[#89776e]">Review incoming orders and keep today's service moving.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <label for="ordersFilter" class="text-sm font-bold text-[#594941]">Status</label>
+            <select id="ordersFilter" class="rounded-xl border border-[#eadfd2] bg-white px-3 py-2 text-sm font-bold text-[#594941]">
+                <option value="">All orders</option>
+                <option value="pending">Pending</option>
+                <option value="out_for_delivery">Out for Delivery</option>
+                <option value="completed">Completed</option>
+                <option value="invalid">Invalid</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+            <label for="ordersType" class="sr-only">Order type</label>
+            <select id="ordersType" class="rounded-xl border border-[#eadfd2] bg-white px-3 py-2 text-sm font-bold text-[#594941]">
+                <option value="">All types</option>
+                <option value="dine_in">Dine-In</option>
+                <option value="pickup">Pickup</option>
+                <option value="delivery">Delivery</option>
+            </select>
+            <label for="ordersPayment" class="sr-only">Payment</label>
+            <select id="ordersPayment" class="rounded-xl border border-[#eadfd2] bg-white px-3 py-2 text-sm font-bold text-[#594941]">
+                <option value="">Any payment</option>
+                <option value="paid">Paid</option>
+                <option value="unpaid">Not yet paid</option>
+            </select>
+            <label for="ordersSize" class="sr-only">Orders per page</label>
+            <select id="ordersSize" class="rounded-xl border border-[#eadfd2] bg-white px-3 py-2 text-sm font-bold text-[#594941]">
+                <option value="10">10 per page</option>
+                <option value="20">20 per page</option>
+                <option value="50">50 per page</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-3 rounded-2xl border border-[#eadfd2] bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-wrap items-center gap-3">
+            <button type="button" id="refreshOrders" class="inline-flex items-center gap-2 rounded-xl bg-[#800000] px-4 py-2 text-sm font-extrabold text-white transition hover:bg-[#660000] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#800000]/25 disabled:cursor-wait disabled:opacity-70">
+                <svg id="refreshIcon" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/>
+                    <path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/>
+                    <path d="M21 3v5h-5"/>
+                    <path d="M3 21v-5h5"/>
+                </svg>
+                <span id="refreshLabel">Refresh orders</span>
+            </button>
+            <div class="flex items-center gap-2 text-sm font-bold text-[#594941]">
+                <label class="inline-flex cursor-pointer items-center gap-2">
+                    <input type="checkbox" id="autoRefreshToggle" class="h-4 w-4 accent-[#800000]">
+                    <span>Check every</span>
+                </label>
+                <input type="number" id="autoRefreshSeconds" min="5" max="3600" step="1" value="30" inputmode="numeric" aria-label="Auto-refresh interval in seconds" class="h-9 w-20 rounded-lg border border-[#eadfd2] bg-white px-2 text-center text-sm font-bold text-[#594941] outline-none focus:border-[#800000] focus:ring-4 focus:ring-[#800000]/10">
+                <label for="autoRefreshSeconds">seconds</label>
+            </div>
+        </div>
+        <p id="refreshStatus" role="status" aria-live="polite" class="text-xs font-semibold text-[#89776e]">Not refreshed yet</p>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <section class="relative overflow-hidden rounded-2xl border border-[#f0d8ce] bg-white p-5 shadow-sm">
+            <div class="absolute inset-y-0 left-0 w-1 bg-[#b42318]"></div>
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-extrabold uppercase tracking-[0.14em] text-[#89776e]">Pending orders</p>
+                    <div class="mt-4 flex items-baseline gap-3">
+                        <p id="stat-pending" class="text-4xl font-black tracking-tight text-[#342724]">0</p>
+                        <span class="rounded-full bg-[#fff0ed] px-2.5 py-1 text-xs font-extrabold text-[#b42318]">Preparing</span>
+                    </div>
+                    <p class="mt-2 text-sm font-semibold text-[#89776e]">Awaiting completion</p>
+                </div>
+                <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-[#fff0ed] text-[#b42318]" aria-hidden="true">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="9"/>
+                        <path d="M12 7v5l3 2"/>
+                    </svg>
+                </span>
+            </div>
+        </section>
+
+        <section class="relative overflow-hidden rounded-2xl border border-[#eadfd2] bg-white p-5 shadow-sm">
+            <div class="absolute inset-y-0 left-0 w-1 bg-[#a87822]"></div>
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-extrabold uppercase tracking-[0.14em] text-[#89776e]">Completed today</p>
+                    <div class="mt-4 flex items-baseline gap-3">
+                        <p id="stat-completed" class="text-4xl font-black tracking-tight text-[#342724]">0</p>
+                        <span class="rounded-full bg-[#fbf5e7] px-2.5 py-1 text-xs font-extrabold text-[#8a6414]">Orders complete</span>
+                    </div>
+                    <p class="mt-2 text-sm font-semibold text-[#89776e]">Completed today</p>
+                </div>
+                <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-[#fbf5e7] text-[#8a6414]" aria-hidden="true">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m5 12 4 4L19 6"/>
+                        <circle cx="12" cy="12" r="9"/>
+                    </svg>
+                </span>
+            </div>
+        </section>
+    </div>
+
+    <section class="overflow-hidden rounded-2xl border border-[#eadfd2] bg-white shadow-sm">
+        <div class="flex flex-col gap-2 border-b border-[#f0e8df] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div class="flex items-center gap-3">
+                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#fff0ed] text-[#b42318]" aria-hidden="true">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3h2l2.2 11.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L22 7H6"/>
+                        <circle cx="10" cy="20" r="1"/>
+                        <circle cx="18" cy="20" r="1"/>
+                    </svg>
+                </span>
+                <div>
+                    <h3 class="font-extrabold text-[#342724]">Orders</h3>
+                    <p class="text-xs font-semibold text-[#89776e]">Filter and update customer orders</p>
+                </div>
+            </div>
+            <span id="pending-badge" class="self-start rounded-full bg-[#fff0ed] px-3 py-1 text-xs font-extrabold text-[#b42318]">0 in progress</span>
+        </div>
+
+        <div id="pending-list" class="grid gap-4 p-4 sm:p-5 xl:grid-cols-2"></div>
+        <div class="flex items-center justify-between border-t border-[#f0e8df] px-5 py-4">
+            <button type="button" id="ordersPrev" class="rounded-lg border border-[#eadfd2] px-3 py-2 text-xs font-bold disabled:opacity-50">Previous</button>
+            <span id="ordersPageInfo" class="text-xs font-semibold text-[#89776e]"></span>
+            <button type="button" id="ordersNext" class="rounded-lg border border-[#eadfd2] px-3 py-2 text-xs font-bold disabled:opacity-50">Next</button>
+        </div>
+    </section>
+
+</div>
+
+<form id="orderCsrf" hidden>{% csrf_token %}</form>
+
+<script>
+
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+
+    function getCookie(name) {
+        const m = document.cookie.split("; ").find(r => r.startsWith(name + "="));
+        return m ? decodeURIComponent(m.split("=")[1]) : "";
+    }
+    const csrfToken = document.querySelector("#orderCsrf [name=csrfmiddlewaretoken]")?.value || getCookie("csrftoken");
+
+    const peso = (n) => "$" + Number(n || 0).toLocaleString("en-PH", {
+        minimumFractionDigits: 2, maximumFractionDigits: 2
+    });
+    let ordersPage = 1;
+    document.getElementById("pending-list").innerHTML =
+        '<p class="col-span-full py-6 text-center text-sm font-semibold text-[#89776e]">Loading orders…</p>';
+
+    
+    function formatItems(items) {
+        if (Array.isArray(items)) {
+            return items.map(i => {
+                if (typeof i === "string") return i;
+
+                const name = i.food_item_name ?? i.name ?? i.item_name ?? "Item";
+                const quantity = i.quantity ?? i.qty ?? 1;
+
+                return `${quantity}x ${name}`;
+            }).join(", ");
+        }
+
+        return items || "";
+    }
+
+        //  GET PENDING ORDER 
+    async function fetchOrderInfo() {
+        try {
+            const response = await fetch("/api/admin/orders/info/", {
+                method: "GET"
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("Order Information:", data);
+            document.getElementById("stat-pending").textContent = data.pending_orders ?? data.pending ?? 0;
+            document.getElementById("stat-completed").textContent = data.completed_today ?? data.completed ?? 0;
+
+        } catch (error) {
+            console.error("Error fetching order information:", error);
+        }
+    }
+
+
+    //  GET ALL ORDERS
+    async function fetchOrders(filter = "", size = 10, page = 1, sort = "desc", type = "", payment = "") {
+        const params = new URLSearchParams({ size, page, sort });
+        if (filter) params.set("filter", filter);
+        if (type) params.set("type", type);
+        if (payment) params.set("payment", payment);
+
+        const response = await fetch(`/api/admin/orders/?${params}`, { method: "GET" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+
+        return data;
+    }
+
+    async function deleteOrderReceipt(id) {
+        const response = await fetch(`/api/orders/${id}/gcash-receipt`, {
+            method: "DELETE",
+            headers: { "X-CSRFToken": csrfToken },
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+        return data;
+    }
+
+
+    //  UPDATE ORDER STATE (PATCH)
+    async function updateOrderStatus(id, orderData) {
+        const response = await fetch(`/api/admin/orders/${id}/`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify(orderData)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+        }
+
+        console.log("Order status updated:", data);
+        return data;
+    }
+
+
+    const STATUS_BADGE = {
+        COMPLETED: "bg-[#edf7ef] text-[#32744a]",
+        INVALID: "bg-[#fff0ed] text-[#b42318]",
+        OUT_FOR_DELIVERY: "bg-[#e8f1fb] text-[#1d5a96]",
+        CANCELLED: "bg-[#f3f0ee] text-[#7a6a62]",
+    };
+    const STATUS_BADGE_DEFAULT = "bg-[#fbf5e7] text-[#8a6414]";
+    const badge = (text, cls) =>
+        `<span class="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${cls}">${esc(text)}</span>`;
+
+    function statusButton(o, status, label) {
+        const current = o.status === status || (status === "PENDING" && ["CONFIRMED", "PREPARING"].includes(o.status));
+        const base = "rounded-lg border px-3 py-2 text-xs font-extrabold transition disabled:opacity-60";
+        const look = current
+            ? "border-[#800000] bg-[#800000] text-white cursor-default"
+            : "border-[#eadfd2] text-[#594941] hover:border-[#800000] hover:text-[#800000]";
+        return `<button type="button" data-action="status" data-status="${status}" data-id="${esc(o.id)}" ${current ? "disabled" : ""} class="${base} ${look}">${label}</button>`;
+    }
+
+    function addressHistory(o) {
+        const history = o.address_history || [];
+        if (!history.length) return "";
+        const rows = history.map((h) => `
+            <li class="rounded-lg bg-white px-3 py-2">
+                <p class="text-[11px] font-bold text-[#a18e82]">${esc(new Date(h.changed_at).toLocaleString())} · ${esc(h.changed_by)}</p>
+                <p class="text-xs font-semibold text-[#89776e] line-through">${esc(h.old_address || "—")}</p>
+                <p class="text-xs font-bold text-[#342724]">${esc(h.new_address)}</p>
+            </li>`).join("");
+        return `
+        <details data-history-for="${esc(o.id)}" class="mt-3 rounded-lg border border-[#eee4db] bg-[#fbf6f1] px-3 py-2">
+            <summary class="cursor-pointer text-xs font-extrabold text-[#594941]">Address edit history (${history.length})</summary>
+            <ul class="mt-2 space-y-2">${rows}</ul>
+        </details>`;
+    }
+
+    function orderCard(o) {
+        const cancelled = o.status === "CANCELLED";
+        const isDelivery = o.order_type === "DELIVERY";
+        const created = new Date(o.created_at);
+
+        const statusButtons = cancelled
+            ? `<p class="text-xs font-bold text-[#7a6a62]">Cancelled by the customer — no further changes.</p>`
+            : [
+                statusButton(o, "PENDING", "Pending"),
+                isDelivery ? statusButton(o, "OUT_FOR_DELIVERY", "Out for Delivery") : "",
+                statusButton(o, "COMPLETED", "Completed"),
+                statusButton(o, "INVALID", "Mark Invalid"),
+            ].join("");
+        const payButton = cancelled ? "" : o.is_paid
+            ? `<button type="button" data-action="payment" data-paid="false" data-id="${esc(o.id)}" class="rounded-lg border border-[#eadfd2] px-3 py-2 text-xs font-extrabold text-[#594941] transition hover:border-[#800000] hover:text-[#800000] disabled:opacity-50">Mark as Not Paid</button>`
+            : `<button type="button" data-action="payment" data-paid="true" data-id="${esc(o.id)}" ${o.payment_method === "GCASH" && (!o.gcash_receipt || o.payment_review_status === "INVALID") ? "disabled title=\"A replacement receipt is required before verification\"" : ""} class="rounded-lg border border-[#32744a] px-3 py-2 text-xs font-extrabold text-[#32744a] transition hover:bg-[#32744a] hover:text-white disabled:opacity-50">Mark as Paid</button>`;
+
+        const contact = [
+            o.contact_phone ? `<p class="mt-0.5 text-sm font-semibold text-[#89776e]">Phone: ${esc(o.contact_phone)}</p>` : "",
+            isDelivery && o.address ? `<p class="mt-0.5 text-sm font-semibold text-[#89776e]">Address: ${esc(o.address)}</p>` : "",
+        ].join("");
+
+        return `
+    <article class="rounded-xl border border-[#eee4db] bg-[#fffdfa] p-4 transition hover:border-[#dfc9b8] hover:shadow-sm sm:p-5">
+        <div>
+            <div class="flex flex-wrap items-center gap-2">
+                <h4 class="font-black text-[#342724]">Order #${esc(o.order_number ?? o.id)}</h4>
+                ${badge(o.status_display, STATUS_BADGE[o.status] || STATUS_BADGE_DEFAULT)}
+                ${badge(o.order_type_display, "bg-[#f4efff] text-[#5b3f9a]")}
+                ${badge(o.payment_display, o.is_paid ? "bg-[#edf7ef] text-[#32744a]" : "bg-[#fff0ed] text-[#b42318]")}
+            </div>
+            <p class="mt-1 text-sm font-semibold text-[#89776e]">Customer: ${esc(o.customer_name ?? "Guest")}</p>
+            <p class="mt-1 text-sm font-bold text-[#594941]">Payment: ${esc(o.payment_method_display)} · ${esc(o.payment_review_display)}</p>
+            ${o.receipt_invalid_reason ? `<p class="mt-2 rounded-lg bg-[#fff0ed] px-3 py-2 text-xs font-semibold text-[#9b261e]">Receipt rejected: ${esc(o.receipt_invalid_reason)}</p>` : ""}
+            ${o.invalid_reason ? `<p class="mt-2 rounded-lg bg-[#fff0ed] px-3 py-2 text-xs font-semibold text-[#9b261e]">Order invalid: ${esc(o.invalid_reason)}</p>` : ""}
+            ${o.gcash_receipt ? `<div class="mt-3 flex flex-wrap items-center gap-3"><a href="${esc(o.gcash_receipt)}" target="_blank" rel="noopener"><img src="${esc(o.gcash_receipt)}" alt="GCash receipt for ${esc(o.order_number)}" class="h-28 w-28 rounded-xl border border-[#eadfd2] object-cover"></a><a href="${esc(o.gcash_receipt)}" target="_blank" rel="noopener" class="text-xs font-extrabold text-[#800000] underline">Open receipt image</a>${!o.is_paid && o.payment_method === "GCASH" ? `<button type="button" data-action="invalid-receipt" data-id="${esc(o.id)}" class="rounded-lg border border-[#b42318] px-3 py-2 text-xs font-extrabold text-[#b42318] hover:bg-[#fff0ed]">Mark receipt invalid</button>` : ""}${o.status === "COMPLETED" ? `<button type="button" data-action="delete-receipt" data-id="${esc(o.id)}" class="rounded-lg border border-[#eadfd2] px-3 py-2 text-xs font-extrabold text-[#594941] hover:border-[#b42318] hover:text-[#b42318]">Delete receipt</button>` : ""}</div>` : ""}
+            ${contact}
+        </div>
+        <p class="mt-4 text-sm font-bold text-[#594941]">${esc(formatItems(o.items)) || "—"}</p>
+        <div class="mt-4 grid grid-cols-3 gap-3 border-t border-[#eee4db] pt-4">
+            <div>
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-[#a18e82]">Total</p>
+                <p class="mt-1 text-sm font-extrabold text-[#342724]">${peso(o.total_amount)}</p>
+            </div>
+            <div>
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-[#a18e82]">Order date</p>
+                <p class="mt-1 text-sm font-extrabold text-[#342724]">${esc(created.toLocaleDateString())}</p>
+            </div>
+            <div>
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-[#a18e82]">Order time</p>
+                <p class="mt-1 text-sm font-extrabold text-[#342724]">${esc(created.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }))}</p>
+            </div>
+        </div>
+        <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-[#eee4db] pt-4">
+            ${statusButtons}
+            ${payButton ? `<span class="mx-1 hidden h-5 w-px bg-[#eadfd2] sm:inline-block"></span>${payButton}` : ""}
+        </div>
+        ${addressHistory(o)}
+    </article>`;
+    }
+
+    async function loadOrders({ keepOnError = false } = {}) {
+        try {
+            const filter = document.getElementById("ordersFilter").value;
+            const size = Number(document.getElementById("ordersSize").value);
+            const type = document.getElementById("ordersType").value;
+            const payment = document.getElementById("ordersPayment").value;
+            const data = await fetchOrders(filter, size, ordersPage, "desc", type, payment);
+            const orders = data.orders || [];
+            const list = document.getElementById("pending-list");
+            const openHistories = new Set(
+                [...list.querySelectorAll("details[open][data-history-for]")].map((d) => d.dataset.historyFor)
+            );
+            list.innerHTML = orders.length
+                ? orders.map(orderCard).join("")
+                : `<p class="col-span-full py-6 text-center text-sm font-semibold text-[#89776e]">No orders found.</p>`;
+            const pagination = data.pagination;
+            document.getElementById("pending-badge").textContent = `${pagination.total_items} total`;
+            document.getElementById("ordersPageInfo").textContent =
+                pagination.total_items ? `Page ${pagination.page} of ${pagination.total_pages}` : "No orders";
+            document.getElementById("ordersPrev").disabled = !pagination.has_previous;
+            document.getElementById("ordersNext").disabled = !pagination.has_next;
+            list.querySelectorAll("details[data-history-for]").forEach((d) => {
+                if (openHistories.has(d.dataset.historyFor)) d.open = true;
+            });
+            return true;
+        } catch (error) {
+            console.error("Error fetching orders:", error);
+            if (!keepOnError) {
+                const msg = `<p class="col-span-full py-6 text-center text-sm font-semibold text-red-500">Failed to load orders.</p>`;
+                document.getElementById("pending-list").innerHTML = msg;
+            }
+            return false;
+        }
+    }
+
+    // ---- Refresh (manual button + optional polling; no websockets by design) ----
+    const AUTO_KEY = "bjfc.admin.orders.autoRefresh";
+    const MIN_SECONDS = 5, MAX_SECONDS = 3600;
+    let refreshing = false;
+    let autoTimer = null;
+
+    function setRefreshStatus(text, isError = false) {
+        const el = document.getElementById("refreshStatus");
+        el.textContent = text;
+        el.classList.toggle("text-red-500", isError);
+        el.classList.toggle("text-[#89776e]", !isError);
+    }
+
+    // Returns false if a refresh was already running (so callers don't stack requests).
+    async function refreshOrders({ manual = false } = {}) {
+        if (refreshing) return false;
+        refreshing = true;
+        const btn = document.getElementById("refreshOrders");
+        const icon = document.getElementById("refreshIcon");
+        btn.disabled = true;
+        icon.classList.add("animate-spin");
+        document.getElementById("refreshLabel").textContent = "Refreshing…";
+        try {
+            // Background polls keep the current list on screen if the request fails.
+            const [, ok] = await Promise.all([fetchOrderInfo(), loadOrders({ keepOnError: !manual })]);
+            if (ok) setRefreshStatus("Last updated " + new Date().toLocaleTimeString());
+            else setRefreshStatus("Couldn't refresh — showing the last loaded orders", true);
+        } finally {
+            refreshing = false;
+            btn.disabled = false;
+            icon.classList.remove("animate-spin");
+            document.getElementById("refreshLabel").textContent = "Refresh orders";
+        }
+        return true;
+    }
+
+    function readInterval() {
+        const input = document.getElementById("autoRefreshSeconds");
+        let n = Math.floor(Number(input.value));
+        if (!Number.isFinite(n) || n < MIN_SECONDS) n = MIN_SECONDS;
+        if (n > MAX_SECONDS) n = MAX_SECONDS;
+        input.value = n;
+        return n;
+    }
+
+    function saveAutoSettings() {
+        try {
+            localStorage.setItem(AUTO_KEY, JSON.stringify({
+                on: document.getElementById("autoRefreshToggle").checked,
+                seconds: readInterval(),
+            }));
+        } catch (e) { /* storage unavailable: setting just won't persist */ }
+    }
+
+    function applyAutoRefresh() {
+        clearInterval(autoTimer);
+        autoTimer = null;
+        if (!document.getElementById("autoRefreshToggle").checked) return;
+        autoTimer = setInterval(() => {
+            if (document.hidden) return; // don't poll from a background tab
+            refreshOrders();
+        }, readInterval() * 1000);
+    }
+
+    function setupRefresh() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(AUTO_KEY) || "null");
+            if (saved) {
+                document.getElementById("autoRefreshSeconds").value = saved.seconds;
+                document.getElementById("autoRefreshToggle").checked = !!saved.on;
+            }
+        } catch (e) { /* ignore corrupt/unavailable storage */ }
+        readInterval();
+
+        document.getElementById("refreshOrders").addEventListener("click", () => {
+            refreshOrders({ manual: true });
+            applyAutoRefresh(); // restart the countdown so a manual refresh isn't followed instantly by a poll
+        });
+        document.getElementById("autoRefreshToggle").addEventListener("change", () => { saveAutoSettings(); applyAutoRefresh(); });
+        document.getElementById("autoRefreshSeconds").addEventListener("change", () => { saveAutoSettings(); applyAutoRefresh(); });
+        // Catch up right away when the admin returns to the tab.
+        document.addEventListener("visibilitychange", () => {
+            if (!document.hidden && autoTimer) refreshOrders();
+        });
+        applyAutoRefresh();
+    }
+
+    async function onActionClick(e) {
+        const btn = e.target.closest("button[data-action]");
+        if (!btn) return;
+
+        if (btn.dataset.action === "delete-receipt") {
+            if (!window.confirm("Permanently delete this GCash receipt?")) return;
+            btn.disabled = true;
+            btn.textContent = "Deleting…";
+            try {
+                await deleteOrderReceipt(btn.dataset.id);
+                ordersPage = 1;
+                await loadOrders();
+            } catch (error) {
+                console.error("Error deleting receipt:", error);
+                alert(error.message || "Couldn't delete the receipt. Please try again.");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Delete receipt";
+            }
+            return;
+        }
+
+        const body = btn.dataset.action === "payment"
+            ? { is_paid: btn.dataset.paid === "true" }
+            : { status: btn.dataset.status };
+        if (btn.dataset.action === "invalid-receipt") {
+            const reason = window.prompt("Why is this GCash receipt invalid?");
+            if (!reason || !reason.trim()) return;
+            body.payment_action = "invalid_receipt";
+            body.reason = reason.trim();
+        }
+        if (body.status === "INVALID") {
+            const reason = window.prompt("Why is this order invalid?");
+            if (!reason || !reason.trim()) return;
+            body.invalid_reason = reason.trim();
+        }
+        btn.disabled = true;
+        btn.textContent = "Updating…";
+
+        try {
+            await updateOrderStatus(btn.dataset.id, body);
+            ordersPage = 1;
+            await Promise.all([fetchOrderInfo(), loadOrders()]);
+        } catch (error) {
+            console.error("Error updating order status:", error);
+            alert("Couldn't update the order. Please try again.");
+            loadOrders();
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("pending-list").addEventListener("click", onActionClick);
+        ["ordersFilter", "ordersType", "ordersPayment"].forEach((id) => {
+            document.getElementById(id).addEventListener("change", () => {
+                ordersPage = 1;
+                loadOrders();
+            });
+        });
+        document.getElementById("ordersSize").addEventListener("change", () => {
+            ordersPage = 1;
+            loadOrders();
+        });
+        document.getElementById("ordersPrev").addEventListener("click", () => {
+            if (ordersPage > 1) {
+                ordersPage -= 1;
+                loadOrders();
+            }
+        });
+        document.getElementById("ordersNext").addEventListener("click", () => {
+            ordersPage += 1;
+            loadOrders();
+        });
+        setupRefresh();
+        refreshOrders({ manual: true });
+    });
+</script>
+
+{% endblock %}

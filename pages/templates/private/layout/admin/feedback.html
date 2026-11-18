@@ -1,0 +1,126 @@
+{% extends "private/layout/admin/base.html" %}
+{% load static %}
+
+{% block title %}Customer Feedback{% endblock %}
+{% block page_heading %}Customer Feedback{% endblock %}
+
+{% block content %}
+<div class="space-y-7">
+    <div>
+        <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-[#a87864]">Customer voice</p>
+        <h2 class="mt-1 text-3xl font-black tracking-tight text-[#342724]">Feedback</h2>
+        <p class="mt-1 text-sm font-semibold text-[#89776e]">Messages sent through the Contact page.</p>
+    </div>
+
+    <section class="overflow-hidden rounded-2xl border border-[#eadfd2] bg-white shadow-sm">
+        <div class="border-b border-[#f0e8df] px-5 py-4 sm:px-6">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h3 class="font-extrabold text-[#342724]">Contact messages</h3>
+                    <p class="mt-0.5 text-xs font-semibold text-[#89776e]">Sender identity and submitted message</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[640px] border-collapse text-left">
+                <thead class="bg-[#fffdfa]">
+                    <tr>
+                        <th scope="col" class="px-5 py-3 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#89776e] sm:px-6">Customer</th>
+                        <th scope="col" class="px-5 py-3 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#89776e]">Email</th>
+                        <th scope="col" class="px-5 py-3 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#89776e]">Phone</th>
+                        <th scope="col" class="px-5 py-3 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#89776e]">Message</th>
+                    </tr>
+                </thead>
+                <tbody id="fb-body" class="divide-y divide-[#f0e8df]">
+                    <tr><td colspan="4" class="px-6 py-8 text-center text-gray-500">Loading messages…</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-[#f0e8df] px-5 py-4">
+            <label for="feedbackPageSize" class="text-xs font-bold text-[#89776e]">
+                Messages per page
+                <select id="feedbackPageSize" class="ml-2 rounded-lg border border-[#eadfd2] bg-white px-2 py-1">
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                </select>
+            </label>
+            <div class="flex items-center gap-3">
+                <button type="button" id="feedbackPrev" class="rounded-lg border border-[#eadfd2] px-3 py-2 text-xs font-bold disabled:opacity-50" disabled>Previous</button>
+                <span id="feedbackPageInfo" class="text-xs font-semibold text-[#89776e]"></span>
+                <button type="button" id="feedbackNext" class="rounded-lg border border-[#eadfd2] px-3 py-2 text-xs font-bold disabled:opacity-50" disabled>Next</button>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+
+    const feedbackPagination = { page: 1, size: 10 };
+
+    async function fetchMessages() {
+        const body = document.getElementById("fb-body");
+        try {
+            const params = new URLSearchParams(feedbackPagination);
+            params.set("sort", "desc");
+            const response = await fetch(`/api/admin/contact/messages/?${params}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || `Request failed (${response.status}).`);
+            renderMessages(data.messages);
+            document.getElementById("feedbackPageInfo").textContent = data.pagination.total_items
+                ? `Page ${data.pagination.page} of ${data.pagination.total_pages} (${data.pagination.total_items} messages)`
+                : "No messages";
+            document.getElementById("feedbackPrev").disabled = !data.pagination.has_previous;
+            document.getElementById("feedbackNext").disabled = !data.pagination.has_next;
+        } catch (error) {
+            console.error("Could not load contact messages:", error);
+            body.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500">${esc(error.message)}</td></tr>`;
+            document.getElementById("feedbackPageInfo").textContent = "";
+            document.getElementById("feedbackPrev").disabled = true;
+            document.getElementById("feedbackNext").disabled = true;
+        }
+    }
+
+    function renderMessages(items) {
+        const body = document.getElementById("fb-body");
+        if (!items.length) {
+            body.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500">No contact messages yet.</td></tr>`;
+            return;
+        }
+
+        body.innerHTML = items.map((message) => `
+            <tr class="transition hover:bg-[#fffdfa]">
+                <td class="px-5 py-4 align-top sm:px-6">
+                    <p class="text-sm font-extrabold text-[#342724]">${esc(message.sender_name || "Guest")}</p>
+                    ${message.sender_name && message.sender_name !== "Guest" ? `<p class="mt-1 text-xs text-[#89776e]">Form name: ${esc(message.name)}</p>` : ""}
+                </td>
+                <td class="break-all px-5 py-4 align-top text-sm font-semibold text-[#594941]">${esc(message.email || "—")}</td>
+                <td class="px-5 py-4 align-top text-sm font-semibold text-[#89776e]">${esc(message.phone || "—")}</td>
+                <td class="max-w-xs break-words px-5 py-4 align-top text-sm font-semibold text-[#594941]">${esc(message.message || "—")}</td>
+            </tr>`).join("");
+    }
+
+    document.getElementById("feedbackPrev").addEventListener("click", () => {
+        if (feedbackPagination.page > 1) {
+            feedbackPagination.page -= 1;
+            fetchMessages();
+        }
+    });
+    document.getElementById("feedbackNext").addEventListener("click", () => {
+        feedbackPagination.page += 1;
+        fetchMessages();
+    });
+    document.getElementById("feedbackPageSize").addEventListener("change", (event) => {
+        feedbackPagination.size = Number(event.target.value);
+        feedbackPagination.page = 1;
+        fetchMessages();
+    });
+    document.addEventListener("DOMContentLoaded", fetchMessages);
+
+</script>
+
+{% endblock %}

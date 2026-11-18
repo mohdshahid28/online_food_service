@@ -1,0 +1,685 @@
+{% extends "private/layout/customer/base.html" %}
+{% load static %}
+
+{% block customer_title %}My Orders | BJFC{% endblock %}
+{% block page_heading %}My orders{% endblock %}
+
+{% block content %}
+{# Menu, cart, and order history use live API data. #}
+<div class="space-y-6">
+    <div>
+        <p class="text-xs font-extrabold uppercase tracking-[0.18em] text-[#a87864]">Build your order</p>
+        <h2 class="mt-1 text-2xl font-black tracking-tight text-[#342724] sm:text-3xl">Your orders</h2>
+        <p class="mt-1 text-sm text-[#89776e]">Pick menu items and place your order.</p>
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <section aria-labelledby="myOrdersTitle" class="rounded-3xl border border-[#eadfd2] bg-white p-5 shadow-sm sm:p-6">
+            <h3 id="myOrdersTitle" class="text-xl font-black text-[#342724]">Menu</h3>
+            <ul class="mt-5 grid gap-4 sm:grid-cols-2">
+                {% for item in order_items %}
+                <li class="flex flex-col rounded-2xl border border-[#eadfd2] bg-[#fffdf9] p-4 transition hover:-translate-y-0.5 hover:shadow-md">
+                    <div class="flex items-start justify-between gap-3">
+                        <img src="{% static item.image %}" alt="{{ item.name }}" class="h-20 w-20 rounded-full object-cover ring-2 ring-[#fff1e3]">
+                    </div>
+                    <h4 class="mt-4 text-base font-extrabold leading-snug text-[#2b201d]">{{ item.name }}</h4>
+                    <p class="mt-2 text-xs leading-5 text-[#89776e]">{{ item.desc }}</p>
+                    <div class="mt-auto flex items-center justify-between pt-4">
+                        <span class="text-xl font-black text-[#342724]">${{ item.price }}</span>
+                        <button type="button" class="h-9 rounded-lg bg-[#e62727] px-5 text-xs font-extrabold uppercase tracking-wide text-white transition hover:bg-[#c41d1d] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#e62727]/25">Add</button>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <div class="flex flex-col gap-6">
+            <div id="orderActions" class="grid grid-cols-2 gap-4">
+                <button type="button" class="h-14 rounded-xl border-2 border-[#e62727] bg-white text-lg font-extrabold text-[#e62727] transition hover:bg-[#fff1f1] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#e62727]/25">Clear Cart</button>
+                <button type="button" class="h-14 rounded-xl bg-[#e62727] text-lg font-extrabold text-white shadow-lg shadow-[#e62727]/20 transition hover:bg-[#c41d1d] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#e62727]/25">Order Now</button>
+            </div>
+        </div>
+    </div>
+
+    {# ===== ORDER HISTORY: GET /api/customer/my-orders (page, size, sort) ===== #}
+    <section aria-labelledby="orderHistoryTitle" class="rounded-3xl border border-[#eadfd2] bg-white p-5 shadow-sm sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3">
+                <h3 id="orderHistoryTitle" class="text-xl font-black text-[#342724]">My Orders</h3>
+                <button type="button" id="refreshOrders" class="inline-flex h-9 items-center gap-2 rounded-lg border border-[#e62727] px-3 text-xs font-extrabold text-[#e62727] transition hover:bg-[#fff1f1] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#e62727]/25 disabled:cursor-wait disabled:opacity-60">
+                    <svg id="refreshIcon" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/>
+                        <path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/>
+                        <path d="M21 3v5h-5"/>
+                        <path d="M3 21v-5h5"/>
+                    </svg>
+                    <span id="refreshLabel">Refresh orders</span>
+                </button>
+                <span id="refreshStatus" role="status" aria-live="polite" class="text-[11px] font-semibold text-[#a18e82]"></span>
+            </div>
+            <div class="flex items-center gap-2 text-xs font-bold text-[#89776e]">
+                <label for="ordersFilter">Status</label>
+                <select id="ordersFilter" class="rounded-lg border border-[#eadfd2] bg-white px-2 py-1">
+                    <option value="">All orders</option>
+                    <option value="pending">Pending</option>
+                    <option value="out_for_delivery">Out for Delivery</option>
+                    <option value="completed">Completed</option>
+                    <option value="invalid">Invalid</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+                <label for="ordersSort">Sort</label>
+                <select id="ordersSort" class="rounded-lg border border-[#eadfd2] bg-white px-2 py-1">
+                    <option value="desc">Newest first</option>
+                    <option value="asc">Oldest first</option>
+                </select>
+                <label for="ordersSize">Per page</label>
+                <select id="ordersSize" class="rounded-lg border border-[#eadfd2] bg-white px-2 py-1">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                </select>
+            </div>
+        </div>
+        <p id="ordersActionMsg" role="status" aria-live="polite" style="display:none;margin-top:1rem;padding:.75rem 1rem;border-radius:.75rem;font-size:.875rem;font-weight:700"></p>
+        <p id="ordersEmpty" class="mt-5 text-sm text-[#89776e]" style="display:none"></p>
+        <ul id="ordersList" class="mt-5 space-y-3"></ul>
+        <div class="mt-5 flex items-center justify-between">
+            <button type="button" id="ordersPrev" class="h-9 rounded-lg border border-[#eadfd2] px-4 text-xs font-extrabold" disabled>Previous</button>
+            <span id="ordersPageInfo" class="text-xs font-bold text-[#89776e]"></span>
+            <button type="button" id="ordersNext" class="h-9 rounded-lg border border-[#eadfd2] px-4 text-xs font-extrabold" disabled>Next</button>
+        </div>
+    </section>
+</div>
+
+{# ===== ADDED FUNCTIONALITY ===== #}
+<form id="csrfForm" hidden data-user-id="{{ request.user.id|default:'' }}" data-phone="{{ request.user.phone_number|default:'' }}">{% csrf_token %}</form>
+
+<script>
+(() => {
+    const API = "/api/customer";
+    const MAX_QTY = 99;
+
+    const norm = (s) => String(s || "").replace(/\s+/g, " ").trim().toLowerCase();
+    const peso = (n) => "$" + Number(n).toFixed(2);
+    const esc = (s) =>
+        String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    // ---------- API helper (session auth + CSRF) ----------
+    function csrfToken() {
+        const input = document.querySelector("#csrfForm [name=csrfmiddlewaretoken]");
+        if (input && input.value) return input.value;
+        const m = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
+        return m ? decodeURIComponent(m[1]) : "";
+    }
+
+    async function api(path, opts = {}) {
+        const method = opts.method || "GET";
+        const qs = opts.query ? "?" + new URLSearchParams(opts.query) : "";
+        const headers = {};
+        if (opts.body) headers["Content-Type"] = "application/json";
+        if (method !== "GET") headers["X-CSRFToken"] = csrfToken();
+        const res = await fetch(API + path + qs, {
+            method,
+            headers,
+            credentials: "same-origin",
+            body: opts.body ? JSON.stringify(opts.body) : undefined,
+        });
+        const text = await res.text();
+        let data = {};
+        try { data = text ? JSON.parse(text) : {}; } catch (e) { /* non-JSON error page */ }
+        if (!res.ok) {
+            const err = new Error(data.error || "Something went wrong (" + res.status + ").");
+            err.status = res.status;
+            throw err;
+        }
+        return data;
+    }
+
+    async function loadAll(path) {
+        const out = [];
+        for (let page = 1; ; page++) {
+            const data = await api(path, { query: { page, size: 100 } });
+            out.push(...data.items);
+            if (!data.pagination.has_next) break;
+        }
+        return out;
+    }
+
+    // ---------- Find the existing markup ----------
+    let menuCards = [...document.querySelectorAll("#myOrdersTitle ~ ul > li")].map((li) => {
+        const buttons = li.querySelectorAll("button");
+        return {
+            li,
+            label: (li.querySelector("h4") || {}).textContent || "",
+            name: norm((li.querySelector("h4") || {}).textContent),
+            addBtn: buttons[buttons.length - 1],
+        };
+    });
+    const menuList = document.querySelector("#myOrdersTitle ~ ul");
+    const actions = document.getElementById("orderActions");
+    const cancelBtn = actions.querySelectorAll("button")[0];
+    const orderBtn = actions.querySelectorAll("button")[1];
+    const ORDER_LABEL = orderBtn.textContent;
+    const cartClearPopup = document.createElement("div");
+    cartClearPopup.id = "cartClearPopup";
+    cartClearPopup.className = "fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 p-4";
+    cartClearPopup.innerHTML = `
+        <div class="w-full max-w-sm rounded-2xl border border-[#eadfd2] bg-white p-6 text-center shadow-2xl" role="status" aria-live="polite">
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#edf7ef] text-2xl font-black text-[#32744a]" aria-hidden="true">✓</div>
+            <p id="cartClearPopupMessage" class="mt-4 text-lg font-extrabold text-[#342724]"></p>
+            <button type="button" class="mt-5 rounded-lg bg-[#800000] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#650000] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#800000]/25">OK</button>
+        </div>`;
+    cartClearPopup.querySelector("button").addEventListener("click", () => {
+        cartClearPopup.classList.add("hidden");
+        cartClearPopup.classList.remove("flex");
+    });
+    cartClearPopup.addEventListener("click", (event) => {
+        if (event.target === cartClearPopup) {
+            cartClearPopup.classList.add("hidden");
+            cartClearPopup.classList.remove("flex");
+        }
+    });
+    document.body.appendChild(cartClearPopup);
+
+    // ---------- Inject the order summary (above Cancel / Order Now) ----------
+    const summary = document.createElement("section");
+    summary.setAttribute("aria-labelledby", "summaryTitle");
+    summary.className = "rounded-3xl border border-[#eadfd2] bg-white p-5 shadow-sm sm:p-6";
+    summary.innerHTML = `
+        <h3 id="summaryTitle" class="text-xl font-black text-[#342724]">Order summary</h3>
+        <p id="cartEmpty" class="mt-5 text-sm text-[#89776e]">No items yet. Press Add on a menu item to get started.</p>
+        <ul id="cartList" class="mt-5 space-y-3"></ul>
+        <fieldset class="mt-5">
+            <legend class="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#89776e]">Order type</legend>
+            <div class="grid grid-cols-3 gap-2">
+                <label class="cursor-pointer"><input type="radio" name="orderType" value="DINE_IN" class="peer sr-only" checked><span class="flex h-11 items-center justify-center rounded-xl border border-[#eadfd2] bg-white text-xs font-extrabold text-[#594941] transition peer-checked:border-[#e62727] peer-checked:bg-[#fff1f1] peer-checked:text-[#e62727] peer-focus-visible:ring-4 peer-focus-visible:ring-[#e62727]/25">Dine-In</span></label>
+                <label class="cursor-pointer"><input type="radio" name="orderType" value="PICKUP" class="peer sr-only"><span class="flex h-11 items-center justify-center rounded-xl border border-[#eadfd2] bg-white text-xs font-extrabold text-[#594941] transition peer-checked:border-[#e62727] peer-checked:bg-[#fff1f1] peer-checked:text-[#e62727] peer-focus-visible:ring-4 peer-focus-visible:ring-[#e62727]/25">Pickup</span></label>
+                <label class="cursor-pointer"><input type="radio" name="orderType" value="DELIVERY" class="peer sr-only"><span class="flex h-11 items-center justify-center rounded-xl border border-[#eadfd2] bg-white text-xs font-extrabold text-[#594941] transition peer-checked:border-[#e62727] peer-checked:bg-[#fff1f1] peer-checked:text-[#e62727] peer-focus-visible:ring-4 peer-focus-visible:ring-[#e62727]/25">Delivery</span></label>
+            </div>
+        </fieldset>
+        <fieldset class="mt-5">
+            <legend class="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#89776e]">Payment method</legend>
+            <div class="grid gap-2 sm:grid-cols-3">
+                <label id="cashDeliveryOption" class="cursor-pointer"><input type="radio" name="paymentMethod" value="CASH_ON_DELIVERY" class="peer sr-only"><span class="flex min-h-11 items-center justify-center rounded-xl border border-[#eadfd2] bg-white px-2 text-center text-xs font-extrabold text-[#594941] transition peer-checked:border-[#e62727] peer-checked:bg-[#fff1f1] peer-checked:text-[#e62727] peer-focus-visible:ring-4 peer-focus-visible:ring-[#e62727]/25">Cash on Delivery</span></label>
+                <label id="cashPickupOption" class="cursor-pointer"><input type="radio" name="paymentMethod" value="CASH_ON_PICKUP" class="peer sr-only" checked><span class="flex min-h-11 items-center justify-center rounded-xl border border-[#eadfd2] bg-white px-2 text-center text-xs font-extrabold text-[#594941] transition peer-checked:border-[#e62727] peer-checked:bg-[#fff1f1] peer-checked:text-[#e62727] peer-focus-visible:ring-4 peer-focus-visible:ring-[#e62727]/25">Cash on Pickup</span></label>
+                <label class="cursor-pointer"><input type="radio" name="paymentMethod" value="GCASH" class="peer sr-only"><span class="flex min-h-11 items-center justify-center rounded-xl border border-[#eadfd2] bg-white px-2 text-center text-xs font-extrabold text-[#594941] transition peer-checked:border-[#e62727] peer-checked:bg-[#fff1f1] peer-checked:text-[#e62727] peer-focus-visible:ring-4 peer-focus-visible:ring-[#e62727]/25">GCash</span></label>
+            </div>
+            <p class="mt-2 text-xs leading-5 text-[#89776e]">For GCash, place your order then upload the receipt image from My Orders.</p>
+        </fieldset>
+        <div id="orderPhoneWrap" class="mt-4" style="display:none">
+            <label for="orderPhone" class="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#89776e]">Contact phone number</label>
+            <input id="orderPhone" type="tel" maxlength="20" autocomplete="tel" placeholder="09XX XXX XXXX" class="h-12 w-full rounded-xl border border-[#eadfd2] bg-[#fffaf4] px-4 text-sm font-semibold text-[#342724] outline-none transition focus:border-[#e62727] focus:bg-white focus:ring-4 focus:ring-[#e62727]/10">
+        </div>
+        <div id="orderAddressWrap" class="mt-4" style="display:none">
+            <label for="orderAddress" class="mb-2 block text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#89776e]">Delivery address</label>
+            <textarea id="orderAddress" rows="2" maxlength="255" placeholder="House/Unit no., Street, Barangay, City" class="w-full resize-none rounded-xl border border-[#eadfd2] bg-[#fffaf4] px-4 py-3 text-sm font-semibold text-[#342724] outline-none transition focus:border-[#e62727] focus:bg-white focus:ring-4 focus:ring-[#e62727]/10"></textarea>
+        </div>
+        <div class="mt-5 flex items-center justify-between border-t border-[#eadfd2] pt-4">
+            <span class="text-sm font-extrabold uppercase tracking-wide text-[#89776e]">Total</span>
+            <span id="cartTotal" class="text-2xl font-black text-[#342724]">$0.00</span>
+        </div>
+        <p id="orderMessage" role="status" aria-live="polite" style="display:none;margin-top:1rem;padding:.75rem 1rem;border-radius:.75rem;font-size:.875rem;font-weight:700"></p>`;
+    actions.parentNode.insertBefore(summary, actions);
+
+    const $ = (id) => document.getElementById(id);
+
+    // ---------- Order type: Dine-In / Pickup / Delivery ----------
+    const selectedType = () =>
+        (document.querySelector('input[name="orderType"]:checked') || {}).value || "DINE_IN";
+    const selectedPayment = () =>
+        (document.querySelector('input[name="paymentMethod"]:checked') || {}).value || "CASH_ON_PICKUP";
+    function syncOrderType() {
+        const type = selectedType();
+        $("orderPhoneWrap").style.display = type === "DINE_IN" ? "none" : "block";   // phone: Pickup + Delivery
+        $("orderAddressWrap").style.display = type === "DELIVERY" ? "block" : "none"; // address: Delivery only
+        $("cashDeliveryOption").style.display = type === "DELIVERY" ? "block" : "none";
+        $("cashPickupOption").style.display = type === "DELIVERY" ? "none" : "block";
+        const selected = document.querySelector('input[name="paymentMethod"]:checked');
+        if (selected && (selected.value === "CASH_ON_DELIVERY") !== (type === "DELIVERY") && selected.value !== "GCASH") {
+            document.querySelector(`input[name="paymentMethod"][value="${type === "DELIVERY" ? "CASH_ON_DELIVERY" : "CASH_ON_PICKUP"}"]`).checked = true;
+        }
+    }
+    $("orderPhone").value = ($("csrfForm").dataset.phone || "").trim();
+    summary.addEventListener("change", (e) => {
+        if (e.target.name === "orderType") { clearMsg(); syncOrderType(); }
+        if (e.target.name === "paymentMethod") clearMsg();
+    });
+    syncOrderType();
+
+    function setMsg(text, isError) {
+        const el = $("orderMessage");
+        el.textContent = text;
+        el.style.display = "block";
+        el.style.background = isError ? "#fff1f1" : "#eef8ee";
+        el.style.color = isError ? "#c41d1d" : "#2f6b2f";
+    }
+    const clearMsg = () => { $("orderMessage").style.display = "none"; };
+
+    // ---------- State ----------
+    const byName = new Map();   // normalized name -> API menu item
+    const byId = new Map();     // id -> API menu item
+    const cart = new Map();
+    function renderMenuCards(items) {
+        if (!items.length) {
+            menuList.innerHTML = '<li class="col-span-full text-sm text-[#89776e]">No menu items are currently available.</li>';
+            menuCards = [];
+            return;
+        }
+        menuList.innerHTML = items.map((item) => `
+            <li class="flex flex-col rounded-2xl border border-[#eadfd2] bg-[#fffdf9] p-4 transition hover:-translate-y-0.5 hover:shadow-md">
+                <div class="flex items-start justify-between gap-3">
+                    <img src="${esc(item.image || "/static/images/menu/chicken1.png")}" alt="${esc(item.name)}" class="h-20 w-20 rounded-full object-cover ring-2 ring-[#fff1e3]">
+                </div>
+                <h4 class="mt-4 text-base font-extrabold leading-snug text-[#2b201d]">${esc(item.name)}</h4>
+                <p class="mt-2 text-xs leading-5 text-[#89776e]">${esc(item.description || "")}</p>
+                <div class="mt-auto flex items-center justify-between pt-4">
+                    <span class="text-xl font-black text-[#342724]">$${esc(item.price)}</span>
+                    <button type="button" class="h-9 rounded-lg bg-[#e62727] px-5 text-xs font-extrabold uppercase tracking-wide text-white transition hover:bg-[#c41d1d]">Add</button>
+                </div>
+            </li>`).join("");
+        menuCards = [...menuList.querySelectorAll("li")].map((li) => {
+            const buttons = li.querySelectorAll("button");
+            const label = li.querySelector("h4").textContent;
+            return { li, label, name: norm(label), addBtn: buttons[0] };
+        });
+    }
+
+    function lineInfo(id) {
+        const item = byId.get(id);
+        const line = cart.get(id);
+        return { item, line, total: Number(item.price) * line.qty };
+    }
+
+    function render() {
+        const list = $("cartList");
+        list.innerHTML = "";
+        let total = 0;
+        for (const id of cart.keys()) {
+            const { item, line, total: lt } = lineInfo(id);
+            total += lt;
+            const li = document.createElement("li");
+            li.dataset.id = id;
+            li.className = "rounded-2xl border border-[#eadfd2] bg-[#fffdf9] p-3";
+            li.innerHTML = `
+                <div class="flex items-start justify-between gap-3">
+                    <p class="min-w-0 truncate text-sm font-extrabold text-[#2b201d]">${esc(item.name)}</p>
+                    <span class="text-sm font-black text-[#342724]">${peso(lt)}</span>
+                </div>
+                <div class="mt-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <button type="button" data-act="dec" aria-label="Decrease quantity of ${esc(item.name)}" class="h-7 w-7 rounded-full border border-[#eadfd2] bg-white font-black text-[#342724]">−</button>
+                        <input type="number" inputmode="numeric" min="1" max="${MAX_QTY}" value="${line.qty}" data-act="qty" aria-label="Quantity of ${esc(item.name)}" class="h-7 w-14 rounded-lg border border-[#eadfd2] bg-white text-center text-sm font-extrabold text-[#342724] outline-none focus:border-[#e62727]">
+                        <button type="button" data-act="inc" aria-label="Increase quantity of ${esc(item.name)}" class="h-7 w-7 rounded-full border border-[#eadfd2] bg-white font-black text-[#342724]">+</button>
+                    </div>
+                    <button type="button" data-act="remove" class="text-xs font-bold text-[#e62727] underline">Remove</button>
+                </div>`;
+            list.appendChild(li);
+        }
+        $("cartEmpty").style.display = cart.size ? "none" : "block";
+        $("cartTotal").textContent = peso(total);
+        orderBtn.disabled = cart.size === 0;
+        orderBtn.style.opacity = cart.size === 0 ? "0.6" : "";
+        orderBtn.style.cursor = cart.size === 0 ? "not-allowed" : "";
+
+        // keep each menu card's Add button in sync with the cart
+        menuCards.forEach((c) => {
+            const item = byName.get(c.name);
+            if (!item) return;
+            const line = cart.get(item.id);
+            c.addBtn.textContent = line ? "Add (" + line.qty + ")" : "Add";
+        });
+    }
+
+    function disable(btn, reason) {
+        btn.disabled = true;
+        btn.title = reason;
+        btn.style.opacity = "0.5";
+        btn.style.cursor = "not-allowed";
+    }
+
+    // ---------- Wire up the existing buttons ----------
+    function bind() {
+        menuCards.forEach((card) => {
+            const item = byName.get(card.name);
+            if (!item) {
+                disable(card.addBtn, "This item isn't on the menu right now.");
+                return;
+            }
+
+            card.addBtn.addEventListener("click", () => {
+                clearMsg();
+                const line = cart.get(item.id) || { qty: 0 };
+                line.qty = Math.min(MAX_QTY, line.qty + 1);
+                cart.delete(item.id);        // re-insert so this meal counts as "most recent"
+                cart.set(item.id, line);
+                render();
+            });
+
+        });
+
+        $("cartList").addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-act]");
+            if (!btn) return;
+            const id = Number(btn.closest("li").dataset.id);
+            const line = cart.get(id);
+            if (!line) return;
+            const act = btn.dataset.act;
+            if (act === "qty") return;   // typing a quantity is handled on "change"
+            clearMsg();
+            if (act === "inc") line.qty = Math.min(MAX_QTY, line.qty + 1);
+            else if (act === "dec") line.qty -= 1;
+            else if (act === "remove") line.qty = 0;
+            if (line.qty < 1) cart.delete(id);
+            render();
+        });
+
+        // Type a quantity directly (e.g. 25) instead of pressing + repeatedly.
+        $("cartList").addEventListener("change", (e) => {
+            const input = e.target.closest('input[data-act="qty"]');
+            if (!input) return;
+            const line = cart.get(Number(input.closest("li").dataset.id));
+            if (!line) return;
+            clearMsg();
+            const qty = Math.floor(Number(input.value));
+            line.qty = Number.isFinite(qty) && qty >= 1 ? Math.min(MAX_QTY, qty) : 1;
+            render();
+        });
+
+        cancelBtn.addEventListener("click", () => {
+            const hadItems = cart.size > 0;
+            cart.clear();
+            render();
+            cartClearPopup.querySelector("#cartClearPopupMessage").textContent =
+                hadItems ? "Cart cleared." : "Your cart is already empty.";
+            cartClearPopup.classList.remove("hidden");
+            cartClearPopup.classList.add("flex");
+            cartClearPopup.querySelector("button").focus();
+        });
+
+        orderBtn.addEventListener("click", async () => {
+            if (!cart.size) return;
+            const type = selectedType();
+            const body = {
+                order_type: type,
+                payment_method: selectedPayment(),
+                items: [...cart].map(([id, line]) => ({ menu_item_id: id, quantity: line.qty })),
+            };
+            if (type !== "DINE_IN") {
+                body.contact_phone = $("orderPhone").value.trim();
+                if (!body.contact_phone) {
+                    setMsg("Please enter a contact phone number.", true);
+                    $("orderPhone").focus();
+                    return;
+                }
+            }
+            if (type === "DELIVERY") {
+                body.address = $("orderAddress").value.trim();
+                if (!body.address) {
+                    setMsg("Please enter your delivery address.", true);
+                    $("orderAddress").focus();
+                    return;
+                }
+            }
+            orderBtn.disabled = true;
+            orderBtn.textContent = "Placing order…";
+            try {
+                const res = await api("/orders", { method: "POST", body });
+                cart.clear();
+                $("orderAddress").value = "";
+                render();
+                setMsg("Order " + res.order_number + " placed!", false);
+                ordersState.page = 1;
+                loadOrders();
+            } catch (err) {
+                setMsg(err.status === 401 ? "Please log in to place an order." : err.message, true);
+            } finally {
+                orderBtn.textContent = ORDER_LABEL;
+                orderBtn.disabled = cart.size === 0;
+            }
+        });
+    }
+
+    // ---------- My orders (GET /api/customer/my-orders) ----------
+    const ordersState = { page: 1, size: 10, sort: "desc", filter: "" };
+    function renderOrders(data) {
+        const { page, total_pages, total_items, has_next, has_previous } = data.pagination;
+        // Remember address edits in progress so a refresh doesn't wipe what the customer typed.
+        const openEdits = new Map();
+        document.querySelectorAll("#ordersList li[data-order-id]").forEach((li) => {
+            const box = li.querySelector("[data-edit-box]");
+            if (box && box.style.display !== "none") openEdits.set(li.dataset.orderId, box.querySelector("textarea").value);
+        });
+        $("ordersList").innerHTML = data.orders.map((o) => {
+            const created = new Date(o.created_at);
+            const isDelivery = o.order_type === "DELIVERY";
+            const statusCls = {
+                COMPLETED: "bg-[#edf7ef] text-[#32744a]",
+                OUT_FOR_DELIVERY: "bg-[#e8f1fb] text-[#1d5a96]",
+                INVALID: "bg-[#fff0ed] text-[#b42318]",
+                CANCELLED: "bg-[#f3f0ee] text-[#7a6a62]",
+            }[o.status] || "bg-[#fff1e3] text-[#342724]";
+            const pill = (text, cls) => `<span class="rounded-full px-2 py-0.5 text-[11px] font-bold ${cls}">${esc(text)}</span>`;
+            const lockedNote = (text) => `<span class="text-[11px] font-semibold text-[#a18e82]">${text}</span>`;
+
+            let addressRow = "";
+            if (isDelivery) {
+                const editControl = o.can_edit_address
+                    ? `<button type="button" data-order-act="edit" class="ml-2 text-xs font-bold text-[#e62727] underline">Edit</button>`
+                    : (o.status === "OUT_FOR_DELIVERY" ? `<span class="ml-2">${lockedNote("Can't be changed once out for delivery")}</span>` : "");
+                addressRow = `
+                <p class="mt-1 text-xs text-[#89776e]">Deliver to: <span data-address-text>${esc(o.address)}</span>${editControl}</p>
+                <div data-edit-box style="display:none" class="mt-2">
+                    <label for="addr-${esc(o.id)}" class="sr-only">Delivery address</label>
+                    <textarea id="addr-${esc(o.id)}" rows="2" maxlength="255" class="w-full resize-none rounded-xl border border-[#eadfd2] bg-[#fffaf4] px-3 py-2 text-xs font-semibold text-[#342724] outline-none focus:border-[#e62727] focus:ring-4 focus:ring-[#e62727]/10">${esc(o.address)}</textarea>
+                    <div class="mt-2 flex gap-2">
+                        <button type="button" data-order-act="save" class="h-8 rounded-lg bg-[#e62727] px-3 text-xs font-extrabold text-white hover:bg-[#c41d1d] disabled:opacity-50">Save address</button>
+                        <button type="button" data-order-act="edit-discard" class="h-8 rounded-lg border border-[#eadfd2] px-3 text-xs font-extrabold text-[#594941]">Discard</button>
+                    </div>
+                </div>`;
+            }
+
+            const cancelControl = o.can_cancel
+                ? `<button type="button" data-order-act="cancel" class="h-8 rounded-lg border border-[#e62727] px-3 text-xs font-extrabold text-[#e62727] transition hover:bg-[#fff1f1] disabled:opacity-50">Cancel order</button>`
+                : (o.status === "OUT_FOR_DELIVERY" ? lockedNote("Can't be cancelled once out for delivery") : "");
+
+            return `
+            <li data-order-id="${esc(o.id)}" class="rounded-2xl border border-[#eadfd2] bg-[#fffdf9] p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <p class="text-sm font-extrabold text-[#2b201d]">${esc(o.order_number)}</p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        ${pill(o.status_display, statusCls)}
+                        ${pill(o.order_type_display, "bg-[#f4efff] text-[#5b3f9a]")}
+                        ${pill(o.payment_display, o.is_paid ? "bg-[#edf7ef] text-[#32744a]" : "bg-[#fff0ed] text-[#b42318]")}
+                    </div>
+                </div>
+                        <p class="mt-2 text-xs font-bold text-[#594941]">Payment method: ${esc(o.payment_method_display)} · ${esc(o.payment_review_display)}</p>
+                        ${o.gcash_receipt ? `<a href="${esc(o.gcash_receipt)}" target="_blank" rel="noopener" class="mt-2 inline-flex text-xs font-extrabold text-[#800000] underline">View GCash receipt</a>` : ""}
+                        ${o.receipt_invalid_reason ? `<p class="mt-2 rounded-lg bg-[#fff0ed] px-3 py-2 text-xs font-semibold text-[#9b261e]">Receipt rejected: ${esc(o.receipt_invalid_reason)}</p>` : ""}
+                        ${o.invalid_reason ? `<p class="mt-2 rounded-lg bg-[#fff0ed] px-3 py-2 text-xs font-semibold text-[#9b261e]">Order invalid: ${esc(o.invalid_reason)}</p>` : ""}
+                        ${o.payment_method === "GCASH" && !o.is_paid && (!o.gcash_receipt || o.payment_review_status === "INVALID") ? `
+                            <div class="mt-3 rounded-xl border border-[#eadfd2] bg-white p-3">
+                                <label for="receipt-${esc(o.id)}" class="block text-xs font-extrabold text-[#594941]">${o.gcash_receipt ? "Upload a replacement receipt image" : "Upload your GCash receipt image"}</label>
+                                <input id="receipt-${esc(o.id)}" data-receipt-upload type="file" accept="image/*" class="mt-2 block w-full text-xs text-[#594941] file:mr-3 file:rounded-lg file:border-0 file:bg-[#800000] file:px-3 file:py-2 file:text-xs file:font-extrabold file:text-white">
+                            </div>` : ""}
+                <p class="mt-1 text-xs text-[#89776e]">Order date: ${esc(created.toLocaleDateString())} · Order time: ${esc(created.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }))}</p>
+                ${o.contact_phone ? `<p class="mt-1 text-xs text-[#89776e]">Contact: ${esc(o.contact_phone)}</p>` : ""}
+                ${addressRow}
+                <ul class="mt-2 text-xs text-[#342724]">
+                    ${o.items.map((i) => `<li>${i.quantity} × ${esc(i.food_item_name)}</li>`).join("")}
+                </ul>
+                <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <div>${cancelControl}</div>
+                    <p class="text-base font-black text-[#342724]">${peso(o.total_amount)}</p>
+                </div>
+            </li>`;
+        }).join("");
+        const empty = $("ordersEmpty");
+        empty.style.display = data.orders.length ? "none" : "block";
+        empty.textContent = total_items ? "No orders on this page." : "You haven't placed any orders yet.";
+        $("ordersPageInfo").textContent = total_items ? "Page " + page + " of " + total_pages + " (" + total_items + " orders)" : "";
+        setPager(has_previous, has_next);
+        openEdits.forEach((value, id) => {
+            const li = document.querySelector('#ordersList li[data-order-id="' + id + '"]');
+            const box = li && li.querySelector("[data-edit-box]");
+            if (!box) return; // order changed and can no longer be edited
+            box.style.display = "block";
+            box.querySelector("textarea").value = value;
+        });
+    }
+
+    function setPager(hasPrev, hasNext) {
+        [["ordersPrev", hasPrev], ["ordersNext", hasNext]].forEach(([id, on]) => {
+            const b = $(id);
+            b.disabled = !on;
+            b.style.opacity = on ? "" : "0.5";
+            b.style.cursor = on ? "" : "not-allowed";
+        });
+    }
+
+    async function loadOrders({ keepOnError = false } = {}) {
+        try {
+            renderOrders(await api("/my-orders", { query: ordersState }));
+            return true;
+        } catch (err) {
+            if (keepOnError && err.status !== 401) return false;
+            $("ordersList").innerHTML = "";
+            $("ordersPageInfo").textContent = "";
+            setPager(false, false);
+            const empty = $("ordersEmpty");
+            empty.style.display = "block";
+            empty.textContent = err.status === 401 ? "Please log in to see your orders." : err.message;
+            return false;
+        }
+    }
+
+    // ---------- Refresh orders button (manual fetch; no websockets by design) ----------
+    let refreshing = false;
+    async function refreshOrders() {
+        if (refreshing) return;
+        refreshing = true;
+        const btn = $("refreshOrders"), status = $("refreshStatus");
+        btn.disabled = true;
+        $("refreshIcon").classList.add("animate-spin");
+        $("refreshLabel").textContent = "Refreshing…";
+        try {
+            const ok = await loadOrders({ keepOnError: true });
+            status.textContent = ok ? "Updated " + new Date().toLocaleTimeString() : "Couldn't refresh — showing the last loaded orders";
+            status.style.color = ok ? "" : "#c41d1d";
+        } finally {
+            refreshing = false;
+            btn.disabled = false;
+            $("refreshIcon").classList.remove("animate-spin");
+            $("refreshLabel").textContent = "Refresh orders";
+        }
+    }
+    $("refreshOrders").addEventListener("click", refreshOrders);
+
+    $("ordersFilter").addEventListener("change", (e) => { ordersState.filter = e.target.value; ordersState.page = 1; loadOrders(); });
+    $("ordersSort").addEventListener("change", (e) => { ordersState.sort = e.target.value; ordersState.page = 1; loadOrders(); });
+    $("ordersSize").addEventListener("change", (e) => { ordersState.size = Number(e.target.value); ordersState.page = 1; loadOrders(); });
+    $("ordersPrev").addEventListener("click", () => { if (ordersState.page > 1) { ordersState.page -= 1; loadOrders(); } });
+    $("ordersNext").addEventListener("click", () => { ordersState.page += 1; loadOrders(); });
+
+    // ---------- Cancel an order / edit a delivery address ----------
+    function setHistMsg(text, isError) {
+        const el = $("ordersActionMsg");
+        el.textContent = text;
+        el.style.display = "block";
+        el.style.background = isError ? "#fff1f1" : "#eef8ee";
+        el.style.color = isError ? "#c41d1d" : "#2f6b2f";
+    }
+
+    $("ordersList").addEventListener("click", async (e) => {
+        const btn = e.target.closest("[data-order-act]");
+        if (!btn) return;
+        const li = btn.closest("li[data-order-id]");
+        const id = li.dataset.orderId;
+        const act = btn.dataset.orderAct;
+        const box = li.querySelector("[data-edit-box]");
+
+        if (act === "edit") {
+            box.style.display = "block";
+            box.querySelector("textarea").focus();
+            return;
+        }
+        if (act === "edit-discard") {
+            box.style.display = "none";
+            return;
+        }
+        if (act === "cancel" && !window.confirm("Cancel this order? This can't be undone.")) return;
+        btn.disabled = true;
+        try {
+            if (act === "save") {
+                const address = box.querySelector("textarea").value.trim();
+                if (!address) throw new Error("Please enter a delivery address.");
+                await api("/orders/" + id, { method: "PATCH", body: { address } });
+                setHistMsg("Delivery address updated.", false);
+            } else {
+                await api("/orders/" + id + "/cancel", { method: "POST" });
+                setHistMsg("Order cancelled.", false);
+            }
+            await loadOrders();
+        } catch (err) {
+            setHistMsg(err.message, true);
+            // 409/404 mean the order changed under us (e.g. it just went out for delivery): refresh it.
+            if (err.status === 409 || err.status === 404) await loadOrders();
+        } finally {
+            btn.disabled = false;
+        }
+    });
+    $("ordersList").addEventListener("change", async (e) => {
+        const input = e.target.closest("[data-receipt-upload]");
+        if (!input || !input.files.length) return;
+        const orderId = input.closest("li[data-order-id]").dataset.orderId;
+        const formData = new FormData();
+        formData.append("receipt", input.files[0]);
+        input.disabled = true;
+        try {
+            const response = await fetch("/api/orders/" + orderId + "/gcash-receipt", {
+                method: "POST",
+                headers: { "X-CSRFToken": csrfToken() },
+                credentials: "same-origin",
+                body: formData,
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "Receipt upload failed.");
+            setHistMsg("GCash receipt uploaded for admin review.", false);
+            await loadOrders();
+        } catch (error) {
+            setHistMsg(error.message, true);
+            input.disabled = false;
+        }
+    });
+    // ---------- Load real menu data, then bind ----------
+    render();
+    setPager(false, false);
+    loadOrders();
+    (async () => {
+        try {
+            const items = await loadAll("/menu/items");
+            renderMenuCards(items);
+            items.forEach((i) => {
+                byId.set(i.id, i);
+                if (!byName.has(norm(i.name))) byName.set(norm(i.name), i);
+            });
+            bind();
+            const requestedName = new URLSearchParams(window.location.search).get("add");
+            if (requestedName) {
+                const item = byName.get(norm(requestedName));
+                const quantity = Number(new URLSearchParams(window.location.search).get("quantity")) || 1;
+                if (item) {
+                    cart.set(item.id, { qty: Math.min(MAX_QTY, Math.max(1, quantity)) });
+                    render();
+                    setMsg("Added " + item.name + " to your order.", false);
+                } else {
+                    setMsg(requestedName + " is not currently available on the menu.", true);
+                }
+            }
+        } catch (err) {
+            setMsg(err.status === 401 ? "Please log in to place an order." : err.message, true);
+        }
+    })();
+})();
+</script>
+
+{% endblock %}

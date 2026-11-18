@@ -1,0 +1,98 @@
+{% extends "private/layout/customer/base.html" %}
+
+{% block customer_title %}My Dashboard | BJFC{% endblock %}
+{% block page_heading %}My dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-7">
+    <section class="relative isolate overflow-hidden rounded-3xl bg-[#800000] px-6 py-7 text-white shadow-lg shadow-[#800000]/10 sm:px-8 sm:py-9">
+        <div class="absolute -right-12 -top-16 -z-10 h-56 w-56 rounded-full bg-white/10"></div>
+        <div class="absolute -bottom-24 right-28 -z-10 h-48 w-48 rounded-full bg-[#d59669]/25"></div>
+        <div class="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-[#f4c9a5]">Welcome back</p>
+                <h2 class="mt-2 text-3xl font-black leading-tight sm:text-4xl">
+                    {% if request.user.is_authenticated %}{{ request.user.get_short_name|default:request.user.username }}{% else %}Food lover{% endif %}
+                </h2>
+                <p class="mt-2 max-w-xl text-sm leading-6 text-white/75 sm:text-base">Your BJFC account at a glance. Ready to find your next favorite meal?</p>
+            </div>
+            <a href="{% url 'menu' %}" class="inline-flex w-fit items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-extrabold text-[#800000] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#fff3e5]">
+                Explore the menu
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+        </div>
+    </section>
+
+    <section aria-label="Your order summary" class="grid gap-4 sm:grid-cols-2">
+        <article class="rounded-2xl border border-[#eadfd2] bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-bold text-[#75645d]">Active order</p>
+                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fff1e3] text-[#a43b2f]">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h2l2.2 11.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L22 7H6"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
+                </span>
+            </div>
+            <p class="mt-4 text-3xl font-black text-[#342724]">{{ active_orders }}</p>
+            <p class="mt-1 text-xs font-bold text-[#a43b2f]">Pending or being prepared</p>
+            <a href="{% url 'my_orders' %}" class="mt-4 inline-flex text-sm font-extrabold text-[#800000] hover:text-[#aa3535]">Track your orders <span class="ml-1" aria-hidden="true">→</span></a>
+        </article>
+        <article class="rounded-2xl border border-[#eadfd2] bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-bold text-[#75645d]">Orders completed</p>
+                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#edf7ed] text-[#368252]">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="10"/></svg>
+                </span>
+            </div>
+            <p class="mt-4 text-3xl font-black text-[#342724]">{{ completed_orders }}</p>
+            <p class="mt-1 text-xs font-semibold text-[#977f76]">Thanks for choosing BJFC</p>
+            <a href="{% url 'customer_account' %}" class="mt-4 inline-flex text-sm font-extrabold text-[#800000] hover:text-[#aa3535]">View your account <span class="ml-1" aria-hidden="true">→</span></a>
+        </article>
+    </section>
+
+    <section aria-labelledby="myOrderChartTitle" class="rounded-3xl border border-[#eadfd2] bg-white p-5 shadow-sm sm:p-7">
+        <h3 id="myOrderChartTitle" class="text-xl font-black text-[#342724] sm:text-2xl">My Order</h3>
+        <p class="mt-1 text-sm text-[#89776e]">Overview of your recent orders.</p>
+        <div class="relative mt-6 h-64 sm:h-80">
+            <canvas id="myOrderChart" role="img" aria-label="Bar chart of your recent orders"></canvas>
+        </div>
+    </section>
+</div>
+
+{{ order_chart|json_script:"order-chart-data" }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var canvas = document.getElementById("myOrderChart");
+    if (!canvas || typeof Chart === "undefined") { return; }
+    var chartData = JSON.parse(document.getElementById("order-chart-data").textContent);
+    new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: chartData.map(function (row) {
+                return new Date(row.date + "T12:00:00").toLocaleDateString([], { weekday: "short", day: "numeric" });
+            }),
+            datasets: [{
+                label: "Orders",
+                data: chartData.map(function (row) { return row.count; }),
+                backgroundColor: "#e60000",
+                hoverBackgroundColor: "#800000",
+                borderRadius: 6,
+                maxBarThickness: 80
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: "#89776e", font: { family: "Nunito", weight: "700" } } },
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: "orders", color: "#89776e" },
+                    grid: { color: "#f0e7de" },
+                    ticks: { color: "#89776e", precision: 0 }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
