@@ -1,126 +1,171 @@
-# Bespren Johny's Fried Chicken Order Management System
-Web Development (ITPS309) + Professional Elective 3 (PELEC304) Finals Project.
+# Online Food Service – Order Management System
 
-### Tech Stacks:
-- Django
-- HTML (via templates)
-- Tailwind CSS (via CDN)
-- JavaScript
+A web-based Food Ordering and Order Management System built using Django. The application provides an online platform for managing food products and customer orders through a user-friendly interface.
 
-Page templates, including shared components, are stored in `pages/templates/` and are owned by the `pages` app.
+## Tech Stack
 
-### Prerequisites:
-If you don't have the following, install it.
-- Git *(CLI is recommended instead of GitHub Desktop)*
-- Python *(Recommended version: 3.14 and above)*
-- `pip` - *Usually comes installed along with Python if you checked the `install pip` box.*
+- **Backend:** Python, Django
+- **Frontend:** HTML, Django Templates
+- **CSS Framework:** Tailwind CSS (CDN)
+- **JavaScript:** JavaScript
+- **Database:** SQLite
+- **Version Control:** Git & GitHub
 
----
+## Project Structure
 
-### Group 3 Members:
+Page templates, including shared components, are stored in `pages/templates/` and managed by the `pages` app.
 
-#### Team Leader:
-- [Khian Victory D. Calderon](https://github.com/khianvictorycalderon)
+## Prerequisites
 
-#### Figma Designers / Prototype Designers:
-- [Alma Bautista](https://github.com/Bautista-mai) **(Figma Desginer Leader)**
-- [Neftaly Careg](https://github.com/nftly2)
-- [Cynon De Leon](https://github.com/Kieere)
+Make sure you have installed:
 
-#### Backend Developers / Database Engineers:
-- [Sean Alonzo](https://github.com/Incineradia) **(Backend Developer Leader)**
-- [Jonel Pronton](https://github.com/jnl06)
-- [Kyla Heart Pineda](https://github.com/pkylaheart)
-- [Karl Ibrahym Oabel](https://github.com/Oabelkarl123)
+- Python 3.14 or above
+- Git
+- pip
 
-#### Frontned Designers / UI Designers
-- [Ceejay Petalvero](https://github.com/Psyche0524) **(Frontend Designer Leader)**
-- [John Marc De Villa](https://github.com/Jon-markus)
-- [Geoffrey Dalumpienes](https://github.com/geofrmdatso)
-- [Warren Tomo](https://github.com/renam0to)
+## Installation and Setup
 
-#### Frontend Engineers / Data Engineer
-- [Maureen Jane Urusa](https://github.com/mawi-ursua) **(Frontend Engineer Leaader)**
-- [John Michael Mamac](https://github.com/JM17mc)
-- [Nathaniel Esguerra](https://github.com/NielEsguerra)
-- [Christian Lenard Melecia](https://github.com/lnrd01)
+### 1. Clone the Repository
 
-#### Documentation Team
-- [James Walter Imperial](https://github.com/imperialjameswalter-BSIT3A) **(Documentation Team Leader)**
-- [Lester Genton](https://github.com/ReleasedDevil)
+```bash
+git clone <YOUR_REPOSITORY_URL>
+```
 
----
+### 2. Navigate to Project Directory
 
-### Setup
-Below are the steps you will do for first time setting up this project.
-1. Clone this repository via `git clone https://github.com/khianvictorycalderon/BJFC-Order-Management-System.git`.
-2. Create a virtual environment via `python -m venv venv`.
-3. Activate the virtual environment via `venv\Scripts\activate`.
-4. Before running any CLI command again, check your CLI, it should have a `(venv)` at the left side. For example: `(venv) D:\myproject\>`. If it has the `(venv)`, the virtual environment is already activated, if not, repeat step 3.
-5. Using the CLI with virtual environment, install the necessary dependencies via `pip install -r requirements.txt`.
-6. SQLite is included with Python, so no separate database server is needed.
-7. Create an `.env` file in the root directory *(the directory containing the `dj` folder)*. Add the following settings:
-    ```env
-    DJANGO_ENV=development
-    DJANGO_SECRET_KEY=replace_with_a_generated_secret_key
-    DEBUG=True
-    ALLOWED_HOSTS=127.0.0.1, localhost
+```bash
+cd <PROJECT_FOLDER>
+```
 
-    SQLITE_NAME=db.sqlite3
+### 3. Create a Virtual Environment
 
-    ADMIN_DEFAULT_USERNAME=admin@example.com
-    ADMIN_DEFAULT_PASSWORD=replace_with_a_strong_password
-    ```
-8. Replace the example values with your own:
-    - `DJANGO_ENV` should be `development` while developing this project.
-    - `DJANGO_SECRET_KEY` should be a unique secret. Generate a 64-character key at [`https://khianvictorycalderon.github.io/secured-dynamic-key-generator`](https://khianvictorycalderon.github.io/secured-dynamic-key-generator).
-    - `DEBUG` should be `True` for local development and `False` in production.
-    - `ALLOWED_HOSTS` is a comma-separated list of hosts. For local development, use `127.0.0.1, localhost`.
-    - `SQLITE_NAME` sets the SQLite database file path. It defaults to `db.sqlite3` in the project root.
-    - `ADMIN_DEFAULT_USERNAME` and `ADMIN_DEFAULT_PASSWORD` must both be non-empty. They are used to create the initial staff account.
-9. Run `python manage.py migrate` to apply migrations to the SQLite database. The first migration also creates the configured staff account if it does not already exist.
-10. Sign in at `/admin-login/` with `ADMIN_DEFAULT_USERNAME` and `ADMIN_DEFAULT_PASSWORD` to open the custom admin panel. The password is hashed and is not reset by later migrations; changing the `.env` value does not change an existing account's password. The configured username must not already belong to a non-staff user.
-11. Run the server via `python manage.py runserver`. *If the port is already in use, specify another one, for example `python manage.py runserver 7000`.*
-12. You can code now!
+```bash
+python -m venv venv
+```
 
-### Pull Guide:
+### 4. Activate Virtual Environment
 
-Meaning sync your local version of repository to the remote branch. *ANALOGY: Copying someone else's notes and writing to your own notebook.*
+**Windows:**
 
-- Everytime you are about to edit or commit a file, run `git pull origin main` first. You should also run it if the Team Leader announced that there are changes in the remote main branch.
-- Avoid pulling while you have unsaved files, or files you have saved but haven't committed it yet. Commit first, then pull.
-- Always run `python manage.py migrate` for any changes in the models.
+```bash
+venv\Scripts\activate
+```
 
-### Push Guide:
+### 5. Install Dependencies
 
-Meaning uploading the code you made for the whole team to see and use. *ANALOGY: You write in someone else's notebook by copying your own notes so that everyone can see it.*
+```bash
+pip install -r requirements.txt
+```
 
-1. Run `git add .` to add all files you have edited. *You can also commit a specific file like `git add ./data/sample.py` if you want to commit that file only and nothing else*.
-2. Run `git commit -m "YOUR-COMMIT-MESSAGE"`. Replace the `YOUR-COMMIT-MESSAGE` with you actual commit message. Example: `git commit -m "Fixed navbar mobile unresponsiveness"`.
+### 6. Configure Environment Variables
 
-    **COMMIT MESSAGE NOTE**: Always make sure that your commit message is as detailed as possible, past tense, and clearly communicates to other developers of what you have done. As much as possible, minimum of 3 words.
-    - Examples of **BAD COMMIT MESSAGE**:
-        - `Updated frontend`
-        - `Updated`
-        - `Fixed`
-    
-        Because it does not clearly communicates to other developers what changed.
+Create a `.env` file in the project root directory (the directory containing the `dj` folder).
 
-    - Examples of **GOOD COMMIT MESSAGE**:
-        - `Updated source configuration data`
-        - `Added navbar to all public pages`
-        - `Added sidebar to a private layout`
-        - `Changed color theme from orange to purple`
-        - `Fixed navbar mobile responsiveness bug`
+Add the following configuration:
 
-        Because it clearly communicates to other developers what you have done and what changed. Other developers can look at it at one glance and immediately know what changed.
+```env
+DJANGO_ENV=development
+DJANGO_SECRET_KEY=replace_with_your_secret_key
+DEBUG=True
+ALLOWED_HOSTS=127.0.0.1,localhost
 
-3. After committing your changes, push your changes to the remote branch via `git push origin main:YOUR-REMOTE-BRANCH`. DO NOT PUSH to the main branch like `git push origin main`. You should have the colon `:`. Now what does that mean? When you push with just `main`, it tells git to push from my local `main` branch to the remote `main` branch. But when you do something like `main:pages/public/ui`, it tells git that from my local `main` branch, push it to remote's `pages/public/ui` branch, so that way you don't push to the remote main branch. **BECAUSE LOCAL BRANCH AND REMOTE BRANCH ARE DIFFERENT**. Now when it comes to naming the branch you want to push, it's better to use a `/` and what that changed is all about. For example, you and your team changed something in the public page's navigation bar, then your remote branch should be `pages/public/navbar`. If you added a notification feature for example, the remote branch name should be `feature/notification` since you added a notification feature to the project. For consistency, minimum of 1 slash `/` for any remote branch name. It's up to you how you would name it. You should also name it as clearly and detailed as possible like the commit message stated above.
-4. Done!
+SQLITE_NAME=db.sqlite3
 
-### NOTES FOR MEMBERS:
-- All tasks are posted on our github repo's issues, check the boxes once you finished the tasks assigned to you..
-- If you encountered an error, always read first the error message first, then search how to fix it, or use AI. If it still doesn't work, then you can ask in our GC what's the solution.
-- For backend developers, always run `python manage.py makemigrations` if you changed something in the models. 
-- Always use virtual environment (`venv\Scripts\activate`) when running `python manage.py runserver`.
-- DO NOT Merge remote branches, only the admin will merge other branches to main branch."# online_food_service" 
+ADMIN_DEFAULT_USERNAME=admin@example.com
+ADMIN_DEFAULT_PASSWORD=replace_with_a_strong_password
+```
+
+Replace the example values with your actual configuration.
+
+### 7. Apply Database Migrations
+
+```bash
+python manage.py migrate
+```
+
+This applies database migrations and creates the initial staff account if it does not already exist.
+
+### 8. Run the Development Server
+
+```bash
+python manage.py runserver
+```
+
+To use another port:
+
+```bash
+python manage.py runserver 7000
+```
+
+### 9. Access the Application
+
+Open your browser and visit:
+
+```text
+http://127.0.0.1:8000/
+```
+
+### 10. Admin Login
+
+Access the custom admin panel:
+
+```text
+http://127.0.0.1:8000/admin-login/
+```
+
+Use the username and password configured in your `.env` file.
+
+## Database Management
+
+Whenever you make changes to Django models, run:
+
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+## Git Workflow
+
+### Pull Latest Changes
+
+Before starting new development work, synchronize your local repository:
+
+```bash
+git pull origin main
+```
+
+### Commit Changes
+
+Add modified files:
+
+```bash
+git add .
+```
+
+Create a commit:
+
+```bash
+git commit -m "Added new application functionality"
+```
+
+### Push Changes
+
+Push your local changes to your designated remote branch:
+
+```bash
+git push origin main:YOUR_REMOTE_BRANCH
+```
+
+Use a meaningful branch name and commit message describing the changes.
+
+## Important Notes
+
+- Always activate the virtual environment before running Django commands.
+- Never share your `.env` file or secret key publicly.
+- Do not commit passwords or sensitive configuration details.
+- Run migrations whenever database models are modified.
+- Keep dependencies updated in `requirements.txt`.
+
+## License
+
+This project is intended for educational and development purposes.
